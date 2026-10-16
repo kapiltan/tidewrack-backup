@@ -32,7 +32,9 @@ func _run() -> void:
 			dialogue.advance()
 			dialogue.choose(second)
 			dialogue.advance()
-			check(journal.entries() == ["keeper_log"], "both logbook endings discover")
+			# Seed storage explicitly; dialogue discovery wiring is a separate change.
+			check(journal.entries().is_empty(), "dialogue does not discover entries")
+			journal.discover("keeper_log")
 			check(state.get_flag("trusted_edith") == (second == 0), "true and false flags")
 			check(state.get_flag("skeptic" if first == 0 else "believer") == true, "first choice")
 			state.set_flag("radioed_tom", true)

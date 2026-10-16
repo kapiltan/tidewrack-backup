@@ -23,12 +23,12 @@ cannot survive a process restart. Settings use a separate persistence path.
 ## Patch contract
 
 - Journal becomes an autoload, preserving insertion order and unique nonblank IDs.
-- Both logbook terminal nodes discover keeper_log on entry. This is a new explicit
-  discovery point, not an inference from trusted_edith. Replays are idempotent.
+- Discovery wiring is deferred: dialogue and content are unchanged. Entries added
+  through Journal.discover are persisted; gameplay does not yet call this API.
 - Version 2 adds journal (array of IDs) alongside existing scene and flags.
 - Version 1 and unversioned saves retain flags and scene, defaulting journal to
-  empty. Old progress cannot reconstruct entries reliably; replaying the logbook
-  discovers the entry. Older game binaries are not guaranteed to preserve v2 data.
+  empty. Old progress cannot reconstruct entries reliably. Replaying the logbook
+  does not discover entries in this patch. Older binaries may discard v2 data.
 - Unknown nonempty IDs survive round trips for future content. Duplicate IDs
   collapse in first-seen order. No title/text content or reader UI is added.
 - Invalid JSON/types, missing v2 journal, unsupported versions, and missing scene
@@ -51,6 +51,10 @@ XDG_DATA_HOME="$(mktemp -d)" godot --headless --path . --editor --import --quit
 XDG_DATA_HOME="$(mktemp -d)" godot --headless --path . --script tests/test_save_journal.gd
 ```
 
+Journal entries are seeded directly through Journal.discover in the tests, with no
+content annotations or discovery wiring. The unchanged dialogue validator retains
+its journal-graph placeholder; no annotation checks are needed.
+
 Engine suite covers all four logbook choice combinations, true/false/custom flag
 round trips, New Game clearing, journal round trip/order/deduplication, detached
 snapshots, silent restore, version 1/unversioned saves, unknown IDs, malformed
@@ -72,7 +76,8 @@ than Array membership (which distinguishes integer and floating-point variants).
 - [ ] Match the tested/exported Wk29 binary to a commit; run the engine suite on
       that candidate and target OSes, including exported resource loading.
 - [ ] Cold quit/relaunch/Continue after each of the four logbook combinations;
-      verify keeper_log and all flags, then repeat interactions and save again.
+      verify all flags plus journal IDs seeded through a test harness. Gameplay
+      discovery and its end-to-end checks belong to a separate wiring change.
 - [ ] Load real archived v1 saves with true AND false trusted_edith, radioed_tom,
       and lamp_relit; save as v2 and relaunch. Retain originals for comparison.
 - [ ] New Game with an existing save: cancel/confirm behavior still needs product

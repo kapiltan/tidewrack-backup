@@ -69,9 +69,6 @@ func _goto(id: String) -> void:
 	_current_id = id
 	var node: Dictionary = _graph[id]
 	_apply_flags(node.get("set_flag", {}))
-	var entry: Variant = node.get("journal_entry", "")
-	if entry is String and not entry.is_empty():
-		Journal.discover(entry)
 	line_shown.emit(
 		str(node.get("speaker", "")),
 		str(node.get("text", "")),
