@@ -41,7 +41,7 @@ The main scene is `scenes/main_menu.tscn`. Saves are written to Godot's
 
 ```
 tidewrack/
-├── project.godot            # engine config; registers the two autoloads
+├── project.godot            # engine config; registers the three autoloads
 ├── scenes/                  # thin .tscn wrappers (root node + script)
 │   ├── main_menu.tscn
 │   ├── game.tscn            # the vertical-slice level
@@ -108,3 +108,6 @@ scope is locked in [`docs/milestones.md`](docs/milestones.md); the build is
 feature-frozen and tagged `v0.2-demo-rc`.
 
 Demo controls add a gamepad (analog stick + A/B) on top of the keyboard bindings.
+
+Journal persistence and the Sprint 29 regression checklist are documented in
+[`docs/journal-save-verification.md`](docs/journal-save-verification.md).
