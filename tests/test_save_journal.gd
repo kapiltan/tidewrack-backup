@@ -60,10 +60,31 @@ func _run() -> void:
 	write_save({"version": 2, "scene": "res://scenes/game.tscn", "flags": {"custom": false}, "journal": ["unknown_future_entry", "keeper_log", "keeper_log"]})
 	check(state.load_game(), "unknown IDs retained")
 	check(journal.entries() == ["unknown_future_entry", "keeper_log"], "ordered deduplication")
+	# Missing or malformed journal data must not block valid scene/story progress.
+	var malformed_cases: Array = [{"version": 2}]
+	for bad_journal in [null, "bad", {}, 7, [7], [""], ["   "], ["keeper_log", 7]]:
+		malformed_cases.append({"version": 2, "journal": bad_journal})
+	for fixture in malformed_cases:
+		journal.discover("stale_entry")
+		state.current_scene = "res://scenes/game.tscn"
+		state.flags = {"stale_flag": true}
+		fixture["scene"] = "res://scenes/lamp_room.tscn"
+		fixture["flags"] = {"trusted_edith": false, "radioed_tom": true}
+		write_save(fixture)
+		var disk_before := FileAccess.get_file_as_string("user://save.json")
+		var count_before := discoveries
+		check(state.load_game(), "malformed journal recovers")
+		check(state.current_scene == fixture.scene and state.flags == fixture.flags, "recovery restores valid scene and flags")
+		check(journal.entries().is_empty(), "recovery clears entire journal including stale entries")
+		check(discoveries == count_before, "recovery does not replay discovery notifications")
+		check(FileAccess.get_file_as_string("user://save.json") == disk_before, "recovery does not rewrite save")
+		check(state.save_game() and state.load_game(), "recovered state can be saved and reloaded")
+		check(journal.entries().is_empty() and state.flags == fixture.flags, "recovered state round trip")
+	journal.discover("sentinel")
 	var expected_flags: Dictionary = state.flags.duplicate(true)
 	var expected_entries: Array = journal.entries()
 	var expected_scene: String = state.current_scene
-	for bad in [null, [], {"version": 99}, {"version": 2, "journal": "bad"}, {"version": 2}, {"version": 2, "journal": [7]}, {"version": 2, "journal": [""]}, {"flags": []}, {"scene": 42}, {"scene": "res://scenes/missing.tscn"}]:
+	for bad in [null, [], {"version": 99}, {"version": 2, "flags": [], "journal": "bad"}, {"version": 2, "scene": 42, "journal": "bad"}, {"version": 2, "scene": "res://scenes/missing.tscn", "journal": "bad"}]:
 		write_save(bad)
 		check(not state.load_game(), "invalid save rejected")
 		check(state.flags == expected_flags and journal.entries() == expected_entries and state.current_scene == expected_scene, "failed load leaves live state intact")

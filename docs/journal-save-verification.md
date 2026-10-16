@@ -31,8 +31,10 @@ cannot survive a process restart. Settings use a separate persistence path.
   does not discover entries in this patch. Older binaries may discard v2 data.
 - Unknown nonempty IDs survive round trips for future content. Duplicate IDs
   collapse in first-seen order. No title/text content or reader UI is added.
-- Invalid JSON/types, missing v2 journal, unsupported versions, and missing scene
-  resources reject the load before mutating live state. No automatic disk migration.
+- Missing or malformed v2 journal data logs a warning and loads an empty journal
+  while restoring valid scene and flags. Any invalid entry clears the entire array.
+  Invalid scene/flags, invalid JSON/top-level data, and unsupported versions still
+  reject the load without mutating live state. Loading never rewrites the disk file.
 - Successful loads replace rather than merge state; they emit entries_changed,
   not entry_added, so discovery notifications are not replayed. New Game clears
   journal and flags in memory; it still leaves the disk save until the next Save.
@@ -58,14 +60,16 @@ its journal-graph placeholder; no annotation checks are needed.
 Engine suite covers all four logbook choice combinations, true/false/custom flag
 round trips, New Game clearing, journal round trip/order/deduplication, detached
 snapshots, silent restore, version 1/unversioned saves, unknown IDs, malformed
-snapshot rejection without partial mutation, stale temporary files, missing saves,
+journal recovery with scene/flag preservation and no disk rewrite, invalid core
+state rejection without partial mutation, stale temporary files, missing saves,
 and failed temporary-file creation preserving the previous save.
 
 ## Validation performed
 
 Godot 4.3 headless editor import completed successfully. The engine suite reports
 `Save/journal failures: 0`; corruption and blocked-temp-path tests intentionally
-log errors. Both dialogue graphs pass the Python validator with no warnings.
+log errors. Nine malformed-journal fixtures log recovery warnings and pass,
+including recovery save/load round trips. Both dialogue graphs pass the Python validator with no warnings.
 `git diff --check` passes. Interactive/exported and real power-loss tests below
 remain pending. The engine run caught and corrected a JSON numeric-version check:
 Godot parses JSON numbers as floats, so version checks use numeric equality rather

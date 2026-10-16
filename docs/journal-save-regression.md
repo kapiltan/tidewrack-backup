@@ -6,7 +6,7 @@ so seed entries through a test harness calling Journal.discover and inspect
 Journal.entries(), GameState.flags, and GameState.current_scene.
 
 The persistence regression suite is tests/test_save_journal.gd. It passed in
-Godot 4.3 after the PR was narrowed to persistence only. Run it with:
+Godot 4.3 after adding malformed-journal recovery. Run it with:
 
 ```sh
 XDG_DATA_HOME="$(mktemp -d)" godot --headless --path . --editor --import --quit
@@ -90,19 +90,27 @@ during manual verification.
 
 ## 5. Malformed journal data
 
-**Steps:** Record the current scene, flags, and journal as a sentinel snapshot.
-Attempt to load otherwise valid version-2 saves with journal missing, a string
-instead of an array, [7], [""], and ["   "]. Also try truncated JSON. Do not press
-Save while checking rejection, because that is a separate write operation.
+**Steps:** Seed stale live entries and flags, then load otherwise valid version-2
+saves with journal missing, null, a string/object/number instead of an array,
+[7], [""], ["   "], and ["keeper_log", 7]. Use a different valid saved scene and
+flags including trusted_edith: false to prove they are restored.
 
-**Expected:** Every load returns false. Scene, flags, and journal remain exactly
-as they were before the attempt; no partial state is installed. The malformed
-file is not rewritten by loading. A duplicate or unknown nonblank string ID is
-valid and must not be confused with malformed data. Missing journal data is
-accepted for v1 only. Continue currently checks file existence and offers no
-useful load-error explanation; that UX remains pending.
+**Expected:** Load returns true and logs a warning that malformed journal data is
+being replaced with an empty journal. The valid saved scene and flags are restored.
+The entire journal becomes empty, including any stale live entries; a mixed array
+is not partially salvaged. No entry_added notification is emitted. Loading leaves
+the disk file untouched; a subsequent successful save/load retains the recovered
+scene/flags and empty journal. Missing journal data in v1 still loads empty without
+this v2 warning. Duplicate and unknown nonblank string IDs remain valid.
 
-**Coverage:** Missing v2 journal, wrong container type, numeric/empty IDs, and
-unchanged live state on rejection passed in the engine suite. Whitespace-only
-IDs, truncated JSON, disk-content preservation, and user-facing Continue behavior
-remain explicit manual checks.
+**Rejection boundary:** An invalid scene or flags still rejects the load without
+changing live state, even when the journal is also malformed. Unreadable files,
+invalid JSON/top-level data, and unsupported save versions remain rejected by the
+existing format checks; journal recovery does not bypass those checks.
+
+**Coverage:** All listed journal fixtures passed in the engine suite, including
+restoration of a different scene, explicit false flags, clearing stale entries,
+silent discovery signals, unchanged disk contents, and subsequent save/load.
+Invalid scene/flags combined with malformed journal data also passed rejection
+checks. The run logged one warning per malformed-journal fixture (nine total).
+Interactive Continue and its warning presentation remain manual checks.

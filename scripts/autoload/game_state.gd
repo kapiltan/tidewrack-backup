@@ -86,12 +86,17 @@ func load_game() -> bool:
 	# Version 1 never stored journal entries. Do not invent discoveries from flags.
 	if version == 1:
 		loaded_journal = []
-	elif not data.has("journal") or not loaded_journal is Array:
-		return false
-	for id in loaded_journal:
-		if not id is String or id.strip_edges().is_empty():
-			return false
-	# Validate the whole snapshot before replacing any live state.
+	else:
+		var valid_journal := data.has("journal") and loaded_journal is Array
+		if valid_journal:
+			for id in loaded_journal:
+				if not id is String or id.strip_edges().is_empty():
+					valid_journal = false
+					break
+		if not valid_journal:
+			push_warning("GameState: malformed journal data; loading with an empty journal.")
+			loaded_journal = []
+	# Core state is valid; journal failures must not discard story progress.
 	current_scene = scene
 	flags = loaded_flags.duplicate(true)
 	Journal.restore(loaded_journal)
