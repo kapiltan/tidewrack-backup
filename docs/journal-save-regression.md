@@ -11,6 +11,7 @@ Godot 4.3 after adding malformed-journal recovery. Run it with:
 ```sh
 XDG_DATA_HOME="$(mktemp -d)" godot --headless --path . --editor --import --quit
 XDG_DATA_HOME="$(mktemp -d)" godot --headless --path . --script tests/test_save_journal.gd
+XDG_DATA_HOME="$(mktemp -d)" godot --headless --path . --script tests/test_save_swap.gd
 ```
 
 The API checks below are covered by that suite where stated; interactive
@@ -33,6 +34,25 @@ version is 2. Player position and active dialogue position are not persisted.
 **Coverage:** API save/load, flags, journal round trip, and silent restore passed
 in the engine suite. Cold-restart menu/scene integration is still a manual check.
 Reading the logbook alone does not discover an entry in this persistence-only PR.
+
+**Replacement failures and recovery:** Before replacing save.json, save_game keeps
+and validates a previous snapshot in save.json.bak. A backup-copy failure aborts
+before replacement. If Windows deletes save.json and then rename fails, Save
+reports failure but the previous checkpoint remains in backup. With no primary,
+Continue loads a valid backup first, then a valid temp if backup is absent/invalid.
+A valid primary always wins; an existing invalid primary is not silently bypassed.
+Recovery does not modify files. It restores a whole snapshot using the same
+journal fallback rules as normal loading. A first failed save can recover from
+its complete temp, and a retry preserves that temp in backup before rewriting it.
+Explicit delete_save removes all three candidates; New Game only clears memory.
+
+The swap suite passes injected copy failure, failure before deletion, and the
+Windows-style delete/rename gap. It checks prior bytes retained in backup,
+fresh-instance load, backup priority, invalid backup with valid temp, invalid
+candidates, first-save/temp-only retry recovery, successful replacement, and
+explicit deletion. Native Windows, cold process restart, and actual power loss
+remain untested. The guarantee concerns a previous persisted checkpoint under
+single-process operation, not unsaved progress or hardware/filesystem failure.
 
 ## 2. A v1 save without journal data
 
