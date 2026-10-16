@@ -18,4 +18,3 @@ func _replace_file(source: String, destination: String) -> Error:
 				return error
 		return FAILED
 	return super._replace_file(source, destination)
-
