@@ -103,6 +103,12 @@ than Array membership (which distinguishes integer and floating-point variants).
 
 ## Before calling it done
 
+- [ ] **Launch risk: manual save only, no save on quit or discovery.** Pause > Save
+      is the only gameplay save trigger. Main Menu, Quit, window close, and journal
+      discovery do not save; progress since the last successful manual save is lost
+      on exit. Verify that the Wk29 build communicates this clearly and decide the
+      launch save policy separately. Autosave remains outside this PR.
+
 - [ ] Match the tested/exported Wk29 binary to a commit; run the engine suite on
       that candidate and target OSes, including exported resource loading.
 - [ ] Cold quit/relaunch/Continue after each of the four logbook combinations;
