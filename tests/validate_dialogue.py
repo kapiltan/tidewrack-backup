@@ -64,6 +64,11 @@ def validate_file(path: Path) -> tuple[list[str], list[str]]:
             errors.append(f"{path.name}:{nid}: node must be an object")
             continue
 
+        if "journal_entry" in node:
+            entry = node["journal_entry"]
+            if not isinstance(entry, str) or not entry.strip():
+                errors.append(f"{path.name}:{nid}: journal_entry must be a nonempty string")
+
         has_choices = isinstance(node.get("choices"), list) and len(node["choices"]) > 0
         has_next = "next" in node
 
@@ -133,16 +138,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
-
-# --- Public Demo: journal graphs -------------------------------------------
-# The journal system (scripts/journal.gd) reads discovered-log entries from the
-# same JSON-graph format, so they validate through the checker above. Journal
-# graphs live under data/dialogue/ with an "entry_*" id and are held to the same
-# rules (targets resolve, a terminal exists). This hook is a placeholder until
-# the journal content lands for the public demo.
-JOURNAL_ENTRY_PREFIX = "entry_"
-
-
-def is_journal_graph(graph: dict) -> bool:
-	return any(str(k).startswith(JOURNAL_ENTRY_PREFIX) for k in graph)

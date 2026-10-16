@@ -7,7 +7,8 @@ extends Node
 signal state_changed
 
 const SAVE_PATH := "user://save.json"
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
+const TEMP_PATH := "user://save.json.tmp"
 
 ## Story flags set during play, e.g. {"trusted_edith": true}.
 var flags: Dictionary = {}
@@ -27,6 +28,7 @@ func get_flag(name: String, default: Variant = false) -> Variant:
 func new_game() -> void:
 	flags.clear()
 	current_scene = "res://scenes/game.tscn"
+	Journal.restore([])
 	state_changed.emit()
 
 
@@ -39,14 +41,20 @@ func save_game() -> bool:
 		"version": SAVE_VERSION,
 		"scene": current_scene,
 		"flags": flags,
+		"journal": Journal.entries(),
 	}
-	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var file := FileAccess.open(TEMP_PATH, FileAccess.WRITE)
 	if file == null:
 		push_error("GameState: could not open save file for writing.")
 		return false
 	file.store_string(JSON.stringify(payload, "\t"))
+	file.flush()
+	var error := file.get_error()
 	file.close()
-	return true
+	if error != OK:
+		return false
+	# Replace only after a complete write; a stale temp file is never loaded.
+	return DirAccess.rename_absolute(TEMP_PATH, SAVE_PATH) == OK
 
 
 func load_game() -> bool:
@@ -65,10 +73,28 @@ func load_game() -> bool:
 		return false
 
 	var data: Dictionary = parsed
-	# Future-proofing: migrate older save versions here.
-	current_scene = data.get("scene", "res://scenes/game.tscn")
+	var version: Variant = data.get("version", 1)
+	if not (version is int or version is float) or (version != 1 and version != SAVE_VERSION):
+		return false
+	var scene: Variant = data.get("scene", "res://scenes/game.tscn")
 	var loaded_flags: Variant = data.get("flags", {})
-	flags = loaded_flags if typeof(loaded_flags) == TYPE_DICTIONARY else {}
+	var loaded_journal: Variant = data.get("journal", [])
+	if not scene is String or not scene.begins_with("res://scenes/"):
+		return false
+	if not ResourceLoader.exists(scene, "PackedScene") or not loaded_flags is Dictionary:
+		return false
+	# Version 1 never stored journal entries. Do not invent discoveries from flags.
+	if version == 1:
+		loaded_journal = []
+	elif not data.has("journal") or not loaded_journal is Array:
+		return false
+	for id in loaded_journal:
+		if not id is String or id.strip_edges().is_empty():
+			return false
+	# Validate the whole snapshot before replacing any live state.
+	current_scene = scene
+	flags = loaded_flags.duplicate(true)
+	Journal.restore(loaded_journal)
 	state_changed.emit()
 	return true
 

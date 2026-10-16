@@ -41,11 +41,13 @@
 		]
 	},
 	"logbook_end_radio": {
+		"journal_entry": "keeper_log",
 		"speaker": "",
 		"text": "You should raise Tom on the radio. He ran her last supply out here; he'll want to know.",
 		"next": null
 	},
 	"logbook_end_quiet": {
+		"journal_entry": "keeper_log",
 		"speaker": "",
 		"text": "You'll keep this between you and the ledger. First the lamp. Then the water.",
 		"next": null
